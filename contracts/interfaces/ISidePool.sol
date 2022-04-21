@@ -124,6 +124,8 @@ interface ISidePool {
 
   function calculateTaxOnRewards(uint256 rewards) external view returns (uint256);
 
+  function passForBoostAmount(address user) external view returns (uint256);
+
   function boostWeight(address user_) external view returns (uint256);
 
   function collectRewards() external;

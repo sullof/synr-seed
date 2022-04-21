@@ -236,6 +236,16 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
     return rewards.mul(conf.taxPoints).div(10000);
   }
 
+  function passForBoostAmount(address user) public view override returns (uint256) {
+    uint256 passAmount;
+    for (uint256 i = 0; i < users[user].deposits.length; i++) {
+      if (users[user].deposits[i].tokenType == SYNR_PASS_STAKE_FOR_BOOST && users[user].deposits[i].unstakedAt == 0) {
+        passAmount++;
+      }
+    }
+    return passAmount;
+  }
+
   /**
    * @param user_ address of the owner of the token being boosted
    * @return the amount being boost
@@ -249,14 +259,15 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
     }
     uint256 boostedAmount = baseAmount;
     uint256 limit;
-    if (user.passAmount > 0) {
+    uint256 passAmount = passForBoostAmount(user_);
+    if (passAmount > 0) {
       // if a SYNR Pass can boost 15000 SYNR (i.e., nftConf.sPBoostLimit)
       // there is a potential limit that depends on how many pass you staked
-      limit = uint256(user.passAmount).mul(nftConf.sPBoostLimit).mul(1e18);
+      limit = uint256(passAmount).mul(nftConf.sPBoostLimit).mul(1e18);
       if (limit < baseAmount) {
         baseAmount = limit;
       }
-      boostedAmount += baseAmount.mul(uint256(user.passAmount).mul(nftConf.sPBoostFactor)).div(10000);
+      boostedAmount += baseAmount.mul(uint256(passAmount).mul(nftConf.sPBoostFactor)).div(10000);
     }
     baseAmount = uint256(user.tokenAmount);
     if (user.blueprintsAmount > 0) {
@@ -394,7 +405,7 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
       tokenAmount = tokenAmountOrID;
       // SidePool must be approve to spend SEED
       stakedToken.transferFrom(user_, address(this), tokenAmount);
-      taxes += tokenAmount;
+      taxes += tokenAmount.sub(tokenAmount.mul(conf.burnRatio).div(10000));
       stakedToken.burn(tokenAmount.mul(conf.burnRatio).div(10000));
     } else {
       revert("SidePool: invalid tokenType");
