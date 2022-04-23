@@ -56,4 +56,6 @@ contract FarmingPool is SidePool {
     require(deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST, "FarmingPool: only bluprints can be unstaked");
     _unstakeDeposit(deposit);
   }
+
+  uint256[50] private __gap;
 }

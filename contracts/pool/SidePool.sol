@@ -616,4 +616,6 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
     require(deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST, "SidePool: not a blueprint");
     _unstakeDeposit(deposit);
   }
+
+  uint256[50] private __gap;
 }
