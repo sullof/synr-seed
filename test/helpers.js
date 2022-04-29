@@ -38,11 +38,11 @@ const Helpers = {
   },
 };
 
-Helpers.S_SYNR_SWAP = 0;
-Helpers.SYNR_STAKE = 1;
-Helpers.SYNR_PASS_STAKE_FOR_BOOST = 2;
-Helpers.SYNR_PASS_STAKE_FOR_SEEDS = 3;
-Helpers.BLUEPRINT_STAKE_FOR_BOOST = 4;
-Helpers.SEED_SWAP = 5;
+Helpers.S_SYNR_SWAP = 1;
+Helpers.SYNR_STAKE = 2;
+Helpers.SYNR_PASS_STAKE_FOR_BOOST = 3;
+Helpers.SYNR_PASS_STAKE_FOR_SEEDS = 4;
+Helpers.BLUEPRINT_STAKE_FOR_BOOST = 5;
+Helpers.SEED_SWAP = 6;
 
 module.exports = Helpers;

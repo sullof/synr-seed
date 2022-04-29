@@ -2,7 +2,18 @@ const {expect, assert, use} = require("chai");
 
 const {fromDepositToTransferPayload, serializeInput} = require("../scripts/lib/PayloadUtils");
 
-const {initEthers, assertThrowsMessage, getTimestamp, increaseBlockTimestampBy, bytes32Address} = require("./helpers");
+const {
+  initEthers,
+  assertThrowsMessage,
+  getTimestamp,
+  increaseBlockTimestampBy,
+  bytes32Address,
+  S_SYNR_SWAP,
+  SYNR_STAKE,
+  SYNR_PASS_STAKE_FOR_BOOST,
+  SYNR_PASS_STAKE_FOR_SEEDS,
+  BLUEPRINT_STAKE_FOR_BOOST,
+} = require("./helpers");
 const {upgrades} = require("hardhat");
 
 // tests to be fixed
@@ -38,12 +49,12 @@ describe("#PayloadUtils", function () {
       const amount = ethers.utils.parseEther("10000");
 
       const payload = await serializeInput(
-        1, // SYNR
+        SYNR_STAKE, // SYNR
         365, // 1 year
         amount
       );
 
-      expect(payload).equal("1000000000000000000000036501");
+      expect(payload).equal("1000000000000000000000036502");
     });
 
     it("should throw invalid token", async function () {
@@ -80,13 +91,13 @@ describe("#PayloadUtils", function () {
       const amount = ethers.utils.parseEther("10000");
 
       const payload = await serializeInput(
-        2, // SYNR
+        SYNR_PASS_STAKE_FOR_BOOST, // SYNR
         365, // 1 year
         200
       );
       const deserialize = await payloadUtils.deserializeInput(payload);
 
-      expect(parseInt(deserialize)).equal(2, 365, amount);
+      expect(parseInt(deserialize)).equal(SYNR_PASS_STAKE_FOR_BOOST, 365, amount);
     });
 
     // TODO add a fake payload and verify if it fails
@@ -99,7 +110,7 @@ describe("#PayloadUtils", function () {
 
     it("should deserialize deposit", async function () {
       const deposit = {
-        tokenType: 2,
+        tokenType: SYNR_STAKE,
         lockedFrom: await getTimestamp(),
         lockedUntil: (await getTimestamp()) + 3600000,
         tokenAmountOrID: ethers.utils.parseEther("1000"),

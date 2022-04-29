@@ -218,6 +218,9 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
       return 0;
     }
     uint256 lockedUntil = uint256(deposit.lockedUntil);
+    if (uint256(deposit.lastRewardsAt) > lockedUntil) {
+      return 0;
+    }
     uint256 now_ = lockedUntil > timestamp ? timestamp : lockedUntil;
     return
       uint256(deposit.tokenAmount)
@@ -531,7 +534,7 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
         uint256(deposit.tokenAmountOrID) == tokenAmountOrID,
       "SidePool: inconsistent deposit"
     );
-    if (tokenType == SYNR_STAKE || tokenType == SEED_SWAP) {
+    if (tokenType == SYNR_STAKE || tokenType == SEED_SWAP || tokenType == S_SYNR_SWAP) {
       uint256 vestedPercentage = getVestedPercentage(
         block.timestamp,
         uint256(deposit.lockedFrom),

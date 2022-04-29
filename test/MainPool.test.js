@@ -2,7 +2,18 @@ const {expect, assert, use} = require("chai");
 
 const {serializeInput} = require("../scripts/lib/PayloadUtils");
 
-const {initEthers, assertThrowsMessage, getTimestamp, increaseBlockTimestampBy, bytes32Address, BNMulBy} = require("./helpers");
+const {
+  initEthers,
+  assertThrowsMessage,
+  getTimestamp,
+  increaseBlockTimestampBy,
+  bytes32Address,
+  BNMulBy,
+  SYNR_STAKE,
+  S_SYNR_SWAP,
+  SYNR_PASS_STAKE_FOR_BOOST,
+  SYNR_PASS_STAKE_FOR_SEEDS,
+} = require("./helpers");
 const {upgrades} = require("hardhat");
 
 // tests to be fixed
@@ -69,11 +80,11 @@ describe("#MainPool", function () {
       const amount = ethers.utils.parseEther("10000");
       await synr.connect(fundOwner).transferFrom(fundOwner.address, user1.address, amount);
       const payload = await serializeInput(
-        1, // SYNR
-        365, // 1 year
+        SYNR_STAKE, // SYNR
+        365, //  year
         amount
       );
-      expect(payload).equal("1000000000000000000000036501");
+      expect(payload).equal("1000000000000000000000036502");
       await synr.connect(user1).approve(mainPool.address, ethers.utils.parseEther("10000"));
       expect(await mainPool.connect(user1).stake(user1.address, payload, 4))
         .emit(mainPool, "DepositSaved")
@@ -101,7 +112,7 @@ describe("#MainPool", function () {
       const amount = ethers.utils.parseEther("10000");
       await synr.connect(fundOwner).transferFrom(fundOwner.address, user1.address, amount);
       const payload = await serializeInput(
-        1, // SYNR
+        SYNR_STAKE, // SYNR
         365, // 1 year
         amount
       );
@@ -135,7 +146,7 @@ describe("#MainPool", function () {
       const amount = ethers.utils.parseEther("10000");
       await synr.connect(fundOwner).transferFrom(fundOwner.address, user1.address, amount);
       const payload = await serializeInput(
-        1, // SYNR
+        SYNR_STAKE, // SYNR
         365, // 1 year
         amount
       );
@@ -169,7 +180,7 @@ describe("#MainPool", function () {
     it("should return length of deposits", async function () {
       const amount = ethers.utils.parseEther("10000");
       await synr.connect(fundOwner).transferFrom(fundOwner.address, user1.address, amount);
-      const payload = "100000000000000000000036501";
+      const payload = "100000000000000000000036502";
       await synr.connect(user1).approve(mainPool.address, ethers.utils.parseEther("10000"));
       expect(await mainPool.connect(user1).stake(user1.address, payload, 4))
         .emit(mainPool, "DepositSaved")
@@ -181,14 +192,14 @@ describe("#MainPool", function () {
     it("should return deposit by index", async function () {
       const amount = ethers.utils.parseEther("10000");
       await synr.connect(fundOwner).transferFrom(fundOwner.address, user1.address, amount);
-      const payload = "100000000000000000000036501";
+      const payload = "100000000000000000000036502";
       await synr.connect(user1).approve(mainPool.address, ethers.utils.parseEther("10000"));
       expect(await mainPool.connect(user1).stake(user1.address, payload, 4))
         .emit(mainPool, "DepositSaved")
         .withArgs(user1.address, 0);
       console.log(await mainPool.getDepositsLength(user1.address));
       const deposit = await mainPool.getDepositByIndex(user1.address, 0);
-      expect(parseInt(deposit)).equal(1, deposit.lockedFrom, deposit.lockedUntil, 0, amount);
+      expect(parseInt(deposit)).equal(SYNR_STAKE, deposit.lockedFrom, deposit.lockedUntil, 0, amount);
     });
   });
 
