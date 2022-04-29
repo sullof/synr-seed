@@ -183,8 +183,8 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
    * @param deposit The deposit
    * @return the time it will be locked
    */
-  function getLockupTime(Deposit memory deposit) public pure override returns (uint256) {
-    return uint256(deposit.lockedUntil).sub(deposit.lockedFrom).div(1 days);
+  function getLockupTime(Deposit memory deposit) public view override returns (uint256) {
+    return uint256(deposit.lockedUntil).sub(deposit.lockedFrom);
   }
 
   function updateRatio() public override {
@@ -205,7 +205,7 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
    * @return the weighted yield
    */
   function yieldWeight(Deposit memory deposit) public view override returns (uint256) {
-    return uint256(10000).add(getLockupTime(deposit).mul(10000).div(conf.maximumLockupTime));
+    return uint256(10000).add(getLockupTime(deposit).mul(10000).div(conf.maximumLockupTime).div(1 days));
   }
 
   /**
@@ -217,18 +217,25 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
     if (deposit.tokenAmount == 0) {
       return 0;
     }
+    return
+      multiplyByRewardablePeriod(
+        uint256(deposit.tokenAmount).mul(deposit.rewardsFactor).mul(yieldWeight(deposit)).div(10000),
+        deposit,
+        timestamp
+      );
+  }
+
+  function multiplyByRewardablePeriod(
+    uint256 input,
+    Deposit memory deposit,
+    uint256 timestamp
+  ) public view override returns (uint256) {
     uint256 lockedUntil = uint256(deposit.lockedUntil);
     if (uint256(deposit.lastRewardsAt) > lockedUntil) {
       return 0;
     }
-    uint256 now_ = lockedUntil > timestamp ? timestamp : lockedUntil;
-    return
-      uint256(deposit.tokenAmount)
-        .mul(deposit.rewardsFactor)
-        .mul(now_.sub(deposit.lastRewardsAt))
-        .div(lockedUntil.sub(deposit.lockedFrom))
-        .mul(yieldWeight(deposit))
-        .div(1000000);
+    uint256 when = lockedUntil > timestamp ? timestamp : lockedUntil;
+    return input.mul(when.sub(deposit.lastRewardsAt)).div(365 days);
   }
 
   /**
@@ -270,15 +277,15 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
       if (limit < baseAmount) {
         baseAmount = limit;
       }
-      boostedAmount += baseAmount.mul(uint256(passAmount).mul(nftConf.sPBoostFactor)).div(10000);
+      boostedAmount += baseAmount.mul(nftConf.sPBoostFactor).div(10000);
+      baseAmount = uint256(user.tokenAmount).sub(baseAmount);
     }
-    baseAmount = uint256(user.tokenAmount);
     if (user.blueprintsAmount > 0) {
       limit = uint256(user.blueprintsAmount).mul(nftConf.bPBoostLimit).mul(1e18);
       if (limit < boostedAmount) {
         baseAmount = limit;
       }
-      boostedAmount += baseAmount.mul(uint256(user.blueprintsAmount).mul(nftConf.bPBoostFactor)).div(10000);
+      boostedAmount += baseAmount.mul(nftConf.bPBoostFactor).div(10000);
     }
     return boost.mul(boostedAmount).div(user.tokenAmount);
   }
@@ -413,7 +420,7 @@ contract SidePool is PayloadUtils, ISidePool, TokenReceiver, Initializable, Owna
     } else {
       revert("SidePool: invalid tokenType");
     }
-    users[user_].tokenAmount = uint96(uint256(users[user_].tokenAmount).add(tokenAmount));
+    users[user_].tokenAmount = uint128(uint256(users[user_].tokenAmount).add(tokenAmount));
     _updateTvl(tokenType, tokenAmount, true);
     // add deposit
     if (tokenType == S_SYNR_SWAP || tokenType == SEED_SWAP) {

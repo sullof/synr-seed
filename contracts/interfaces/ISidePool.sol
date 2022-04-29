@@ -41,7 +41,7 @@ interface ISidePool {
     // @dev Total blueprints staked for boost
     uint16 blueprintsAmount;
     // @dev Total staked amount
-    uint256 tokenAmount;
+    uint128 tokenAmount;
     Deposit[] deposits;
   }
 
@@ -121,6 +121,12 @@ interface ISidePool {
   function updateRatio() external;
 
   function calculateUntaxedRewards(Deposit memory deposit, uint256 timestamp) external view returns (uint256);
+
+  function multiplyByRewardablePeriod(
+    uint256 input,
+    Deposit memory deposit,
+    uint256 timestamp
+  ) external view returns (uint256);
 
   function calculateTaxOnRewards(uint256 rewards) external view returns (uint256);
 

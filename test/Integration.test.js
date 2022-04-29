@@ -240,7 +240,7 @@ describe("#Integration test", function () {
       .emit(seedFactory, "DepositSaved")
       .withArgs(fundOwner.address, 1);
 
-    expect(await seed.balanceOf(fundOwner.address)).equal("3500761035007610350");
+    expect(await seed.balanceOf(fundOwner.address)).equal("350076103500761035007");
 
     expect(await seedFactory.mockWormholeCompleteTransfer(user2.address, finalPayload3))
       .emit(seedFactory, "DepositSaved")
@@ -328,11 +328,11 @@ describe("#Integration test", function () {
 
     // unstake SEED from sSYNR
 
-    expect(await seed.balanceOf(user2.address)).equal("47255800000000000000000000");
+    expect(await seed.balanceOf(user2.address)).equal("129467945205479452054794520");
 
     await seedPool.connect(user2).unstake(0);
 
-    expect(await seed.balanceOf(user2.address)).equal("52255800000000000000000000");
+    expect(await seed.balanceOf(user2.address)).equal("134467945205479452054794520");
 
     seedDeposit = await seedPool.getDepositByIndex(fundOwner.address, 0);
     expect(seedDeposit.tokenAmountOrID).equal(amount);

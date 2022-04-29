@@ -7,8 +7,6 @@ const {
   assertThrowsMessage,
   getTimestamp,
   increaseBlockTimestampBy,
-  bytes32Address,
-  BNMulBy,
   SYNR_STAKE,
   S_SYNR_SWAP,
   SYNR_PASS_STAKE_FOR_BOOST,

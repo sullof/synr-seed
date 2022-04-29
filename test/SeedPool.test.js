@@ -110,7 +110,7 @@ describe("#SeedPool", function () {
     });
 
     it("should calculate the yield weight", async function () {
-      expect(await pool.getLockupTime(deposit)).equal(180);
+      expect(await pool.getLockupTime(deposit)).equal(15552000);
     });
   });
 
@@ -162,7 +162,7 @@ describe("#SeedPool", function () {
 
     it("should calculate the rewards", async function () {
       await increaseBlockTimestampBy(21 * 24 * 3600);
-      expect(await pool.calculateUntaxedRewards(deposit, await getTimestamp())).equal("1680981749999999999999999");
+      expect(await pool.calculateUntaxedRewards(deposit, await getTimestamp())).equal("82897730136986301369863013");
     });
   });
 

@@ -10,12 +10,17 @@ const {
   BLUEPRINT_STAKE_FOR_BOOST,
 } = require("./helpers");
 const {upgrades} = require("hardhat");
+const PayloadUtils = require("../scripts/lib/PayloadUtils");
 
 // tests to be fixed
 
 function normalize(val, n = 18) {
   return "" + val + "0".repeat(n);
 }
+
+const DAY = 24 * 3600;
+const WEEK = DAY * 7;
+const YEAR = 365 * DAY;
 
 // test unit coming soon
 
@@ -25,7 +30,6 @@ describe("#SidePool", function () {
   let coupon;
   let SidePool, sidePool;
   let SynCityCouponsSimplified, blueprint;
-  let week = 7 * 24 * 3600;
 
   let deployer, fundOwner, superAdmin, operator, validator, user1, user2, marketplace, treasury;
 
@@ -48,7 +52,7 @@ describe("#SidePool", function () {
     await sidePool.deployed();
 
     if (initPool) {
-      await sidePool.initPool(1000, week, 9800, 1000, 100, 800, 3000, 10);
+      await sidePool.initPool(1000, WEEK, 9800, 1000, 100, 800, 3000, 10);
       await sidePool.updateNftConf(100000, 1500, 120000, 150, 1000);
     }
   }
@@ -61,15 +65,15 @@ describe("#SidePool", function () {
     });
 
     it("should revert if already initiated", async function () {
-      await sidePool.initPool(1000, week, 9800, 1000, 100, 800, 3000, 10);
-      expect(sidePool.initPool(1000, week, 9800, 1000, 100, 1000, 3000, 10)).revertedWith("SidePool: already initiated");
+      await sidePool.initPool(1000, WEEK, 9800, 1000, 100, 800, 3000, 10);
+      expect(sidePool.initPool(1000, WEEK, 9800, 1000, 100, 1000, 3000, 10)).revertedWith("SidePool: already initiated");
     });
 
     it("should revert if wrong parameters", async function () {
-      await assertThrowsMessage(sidePool.initPool(1000, week, 129800, 1000, 100, 800, 3000, 10), "value out-of-bounds");
+      await assertThrowsMessage(sidePool.initPool(1000, WEEK, 129800, 1000, 100, 800, 3000, 10), "value out-of-bounds");
       await assertThrowsMessage(sidePool.initPool(1000, 1e12, 9800, 1000, 100, 800, 3000, 10), "value out-of-bounds");
-      await assertThrowsMessage(sidePool.initPool(1e10, week, 9800, 1000, 100, 800, 3000, 10), "value out-of-bounds");
-      await assertThrowsMessage(sidePool.initPool(1000, week, 9800, 1000, 100, 800, 233000, 10), "value out-of-bounds");
+      await assertThrowsMessage(sidePool.initPool(1e10, WEEK, 9800, 1000, 100, 800, 3000, 10), "value out-of-bounds");
+      await assertThrowsMessage(sidePool.initPool(1000, WEEK, 9800, 1000, 100, 800, 233000, 10), "value out-of-bounds");
     });
   });
 
@@ -94,7 +98,7 @@ describe("#SidePool", function () {
     });
 
     it("should calculate the yield weight", async function () {
-      expect(await sidePool.getLockupTime(deposit)).equal(180);
+      expect(await sidePool.getLockupTime(deposit)).equal(15552000);
     });
   });
 
@@ -193,12 +197,12 @@ describe("#SidePool", function () {
     });
 
     it("should be updated", async function () {
-      await increaseBlockTimestampBy(23 * 24 * 3600);
+      await increaseBlockTimestampBy(23 * DAY);
       expect(await sidePool.shouldUpdateRatio()).equal(true);
     });
 
     it("should not be updated", async function () {
-      await increaseBlockTimestampBy(3 * 24 * 3600);
+      await increaseBlockTimestampBy(3 * DAY);
       expect(await sidePool.shouldUpdateRatio()).equal(false);
     });
   });
@@ -208,23 +212,52 @@ describe("#SidePool", function () {
       await initAndDeploy(true);
       const amount = ethers.utils.parseEther("9650");
       const lockedFrom = await getTimestamp();
-      const lockedUntil = lockedFrom + 3600 * 24 * 180;
+      const lockedUntil = lockedFrom + 3600 * 24 * 365;
       deposit = {
         tokenType: SYNR_STAKE,
         lockedFrom,
         lockedUntil,
         tokenAmountOrID: amount,
         unstakedAt: 0,
-        mainIndex: 0,
         tokenAmount: amount.mul(100),
+        mainIndex: 0,
         lastRewardsAt: lockedFrom,
         rewardsFactor: 1000,
       };
     });
 
     it("should calculate the rewards", async function () {
-      await increaseBlockTimestampBy(21 * 24 * 3600);
-      expect(await sidePool.calculateUntaxedRewards(deposit, await getTimestamp())).equal("1680981749999999999999999");
+      await increaseBlockTimestampBy(21 * DAY);
+      expect(await sidePool.calculateUntaxedRewards(deposit, await getTimestamp())).equal("111041095890410958904109589");
+    });
+
+    it("should verify that collecting rewards by week or at the end sums to same amount", async function () {
+      let count = ethers.BigNumber.from("0");
+      for (let i = 0; i < 54; i++) {
+        await increaseBlockTimestampBy(7 * DAY);
+        let ts = await getTimestamp();
+        count = count.add(await sidePool.calculateUntaxedRewards(deposit, ts));
+        deposit.lastRewardsAt = ts;
+      }
+      await initAndDeploy(true);
+      const amount = ethers.utils.parseEther("9650");
+      const lockedFrom = await getTimestamp();
+      const lockedUntil = lockedFrom + 3600 * 24 * 365;
+      deposit = {
+        tokenType: SYNR_STAKE,
+        lockedFrom,
+        lockedUntil,
+        tokenAmountOrID: amount,
+        unstakedAt: 0,
+        tokenAmount: amount.mul(100),
+        mainIndex: 0,
+        lastRewardsAt: lockedFrom,
+        rewardsFactor: 1000,
+      };
+      await increaseBlockTimestampBy(YEAR + DAY);
+      let total = await sidePool.calculateUntaxedRewards(deposit, await getTimestamp());
+
+      expect(total.sub(count).toNumber()).lessThan(5);
     });
   });
 
@@ -234,7 +267,7 @@ describe("#SidePool", function () {
     });
 
     it("should update rewardsFactor", async function () {
-      await increaseBlockTimestampBy(23 * 24 * 3600);
+      await increaseBlockTimestampBy(23 * DAY);
       await sidePool.updateRatio();
       const conf = await sidePool.conf();
       expect(conf.rewardsFactor).equal(940);
@@ -243,7 +276,7 @@ describe("#SidePool", function () {
     });
 
     it("should not update rewardsFactor", async function () {
-      await increaseBlockTimestampBy(13 * 24 * 3600);
+      await increaseBlockTimestampBy(13 * DAY);
       await sidePool.updateRatio();
       let conf = await sidePool.conf();
       expect(conf.rewardsFactor).equal(980);
