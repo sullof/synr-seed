@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity 0.8.11;
 
-import "../utils/ERC20.sol";
-import "../utils/AccessControl.sol";
+import "./utils/ERC20.sol";
+import "./utils/AccessControl.sol";
 
 contract SyntheticSyndicateERC20 is ERC20("Synthetic Syndicate Token", "sSYNR"), AccessControl {
   /**

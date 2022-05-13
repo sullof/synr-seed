@@ -2,17 +2,34 @@ const path = require("path");
 const fs = require("fs-extra");
 const {Contract} = require("@ethersproject/contracts");
 const abi = require("ethereumjs-abi");
+const {deployProxyImpl} = require("@openzeppelin/hardhat-upgrades/dist/utils");
+const requireOrMock = require("require-or-mock");
+const deployedJson = requireOrMock("export/deployed.json");
 
 const oZChainName = {
   1: "mainnet",
   3: "ropsten",
+  5: "goerli",
   56: "bsc",
+};
+
+const chainName = {
+  1: "mainnet",
+  3: "ropsten",
+  5: "goerli",
+  56: "bsc",
+  97: "bsc_testnet",
+  42: "kovan",
+  1337: "localhost",
+  31337: "hardhat",
+  80001: "mumbai",
 };
 
 const scanner = {
   1337: "localhost",
   1: "etherscan.io",
   3: "ropsten.etherscan.io",
+  5: "goerli.etherscan.io",
   56: "bscscan.com",
   97: "testnet.bscscan.com",
 };
@@ -61,6 +78,70 @@ class DeployUtils {
     return new Contract(address, await this.getABI(name, folder), this.getProviders()[chainId]);
   }
 
+  async Tx(promise, msg) {
+    if (msg) {
+      console.debug(msg);
+    }
+    let tx = await promise;
+    console.log("Tx:", tx.hash);
+    await tx.wait();
+    console.log("Mined.");
+  }
+
+  async deploy(contractName, ...args) {
+    const chainId = await this.currentChainId();
+    console.debug("Deploying", contractName, "to", this.network(chainId));
+    const contract = await ethers.getContractFactory(contractName);
+    const deployed = await contract.deploy(...args);
+    console.debug("Tx:", deployed.deployTransaction.hash);
+    await deployed.deployed();
+    console.debug("Deployed at", deployed.address);
+    await this.saveDeployed(chainId, [contractName], [deployed.address]);
+    console.debug(`To verify the source code:
+    
+  npx hardhat verify --show-stack-traces --network ${this.network(chainId)} ${deployed.address} ${[...args]
+      .map((e) => e.toString())
+      .join(" ")}
+      
+`);
+    return deployed;
+  }
+
+  async attach(contractName) {
+    const chainId = await this.currentChainId();
+    const contract = await ethers.getContractFactory(contractName);
+    return contract.attach(deployedJson[chainId][contractName]);
+  }
+
+  async deployProxy(contractName, ...args) {
+    const chainId = await this.currentChainId();
+    console.debug("Deploying", contractName, "to", this.network(chainId));
+    const contract = await ethers.getContractFactory(contractName);
+    const deployed = await upgrades.deployProxy(contract, [...args]);
+    console.debug("Tx:", deployed.deployTransaction.hash);
+    await deployed.deployed();
+    console.debug("Deployed at", deployed.address);
+    await this.saveDeployed(chainId, [contractName], [deployed.address]);
+    await this.verifyCodeInstructions(contractName);
+    return deployed;
+  }
+
+  async upgradeProxy(contractName, gasLimit) {
+    const chainId = await this.currentChainId();
+    console.debug("Upgrading", contractName, "to", this.network(chainId));
+    const Contract = await ethers.getContractFactory(contractName);
+    const upgraded = await upgrades.upgradeProxy(deployedJson[chainId][contractName], Contract, gasLimit ? {gasLimit} : {});
+    console.debug("Tx:", upgraded.deployTransaction.hash);
+    await upgraded.deployed();
+    console.debug("Upgraded");
+    // await this.verifyCodeInstructions(contractName);
+    return upgraded;
+  }
+
+  network(chainId) {
+    return chainName[chainId];
+  }
+
   async currentChainId() {
     return (await this.ethers.provider.getNetwork()).chainId;
   }
@@ -102,36 +183,37 @@ class DeployUtils {
     return abi.rawEncode(parameterTypes, parameterValues).toString("hex");
   }
 
-  async verifyCodeInstructions(name, chainId, types, values, contract) {
+  async verifyCodeInstructions(contractName) {
+    const chainId = await this.currentChainId();
     let chainName = oZChainName[chainId] || "unknown-" + chainId;
     const oz = JSON.parse(await fs.readFile(path.resolve(__dirname, "../../.openzeppelin", chainName + ".json")));
     let address;
     LOOP: for (let key in oz.impls) {
       let storage = oz.impls[key].layout.storage;
       for (let s of storage) {
-        if (s.contract === contract) {
+        if (s.contract === contractName) {
           address = oz.impls[key].address;
           break LOOP;
         }
       }
     }
 
-    let response = `To verify ${name} source code, flatten the source code, get the implementation address in .openzeppelin, remove the licenses, except the first one, and verify manually at 
+    let response = `To verify ${contractName} source code, flatten the source code and verify manually at 
     
-https://${scanner[chainId]}/address/${address}    
+https://${scanner[chainId]}/address/${address}
 
-${
-  values.length
-    ? `The encoded arguments are:
+as a single file, without constructor's parameters    
 
-${this.encodeArguments(types, values)}`
-    : ""
-}
 `;
+    return this.saveLog(contractName, response);
+  }
+
+  async saveLog(contractName, response) {
+    const chainId = await this.currentChainId();
     const logDir = path.resolve(__dirname, "../../log");
     await fs.ensureDir(logDir);
     const shortDate = new Date().toISOString().substring(5, 16);
-    const fn = [name, chainId, shortDate].join("_") + ".log";
+    const fn = [contractName, chainId, shortDate].join("_") + ".log";
     if (chainId !== 1337) {
       await fs.writeFile(path.resolve(logDir, fn), response);
       return `${response}

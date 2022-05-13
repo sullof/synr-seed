@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity 0.8.11;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 // (c) 2022+ SuperPower Labs Inc.
@@ -11,8 +11,10 @@ contract SeedPool is SidePool {
   using SafeMathUpgradeable for uint256;
   using AddressUpgradeable for address;
 
-  modifier onlyFactory() {
-    require(factory != address(0) && _msgSender() == factory, "SeedPool: forbidden");
+  mapping(address => bool) public bridges;
+
+  modifier onlyBridge() {
+    require(bridges[_msgSender()], "SeedPool: forbidden");
     _;
   }
 
@@ -25,9 +27,13 @@ contract SeedPool is SidePool {
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
-  function setFactory(address farmer_) external virtual onlyOwner {
-    require(farmer_.isContract(), "SeedPool: farmer_ not a contract");
-    factory = farmer_;
+  function setBridge(address bridge_, bool active) external virtual onlyOwner {
+    require(bridge_.isContract(), "SeedPool: bridge_ not a contract");
+    if (active) {
+      bridges[bridge_] = true;
+    } else {
+      delete bridges[bridge_];
+    }
   }
 
   function stake(
@@ -49,30 +55,35 @@ contract SeedPool is SidePool {
 
   function unstake(uint256 depositIndex) external override {
     Deposit memory deposit = users[_msgSender()].deposits[depositIndex];
-    require(deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST, "SeedPool: invalid tokenType");
+    require(
+      deposit.tokenType == S_SYNR_SWAP ||
+        deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST ||
+        deposit.tokenType == BLUEPRINT_STAKE_FOR_SEEDS,
+      "SeedPool: invalid tokenType"
+    );
     _unstakeDeposit(deposit);
   }
 
-  function stakeViaFactory(
+  function stakeViaBridge(
     address user_,
     uint256 tokenType,
     uint256 lockedFrom,
     uint256 lockedUntil,
     uint256 mainIndex,
     uint256 tokenAmountOrID
-  ) external onlyFactory {
+  ) external onlyBridge {
     require(tokenType < BLUEPRINT_STAKE_FOR_BOOST, "SeedPool: unsupported token");
     _stake(user_, tokenType, lockedFrom, lockedUntil, mainIndex, tokenAmountOrID);
   }
 
-  function unstakeViaFactory(
+  function unstakeViaBridge(
     address user_,
     uint256 tokenType,
     uint256 lockedFrom,
     uint256 lockedUntil,
     uint256 mainIndex,
     uint256 tokenAmountOrID
-  ) external onlyFactory {
+  ) external onlyBridge {
     _unstake(user_, tokenType, lockedFrom, lockedUntil, mainIndex, tokenAmountOrID);
   }
 

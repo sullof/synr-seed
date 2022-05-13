@@ -18,18 +18,22 @@ async function main() {
     ABIs.contracts[rename || name] = json.abi;
   }
 
-  abi("SyntheticSyndicateERC20", "token");
-  abi("SyndicateERC20", "token");
-  abi("SynCityPasses", "token");
-  abi("SynrBridge", "");
+  abi("SyntheticSyndicateERC20", "previously-deployed");
+  abi("SyndicateERC20", "previously-deployed");
+  abi("SynCityPasses", "previously-deployed");
+  abi("SynCityCoupons", "previously-deployed");
+
+  abi("Tesseract", "");
+
+  abi("MainWormholeBridge", "bridge");
+  abi("SideWormholeBridge", "bridge");
 
   abi("SeedToken", "token");
-  abi("SynCityCouponsSimplified", "token", "SynCityCoupons");
-  abi("SeedFactory", "");
-
   abi("WeedToken", "token");
-  abi("FarmingPool", "pool");
+
   abi("MainPool", "pool");
+  abi("SeedPool", "pool");
+  abi("FarmingPool", "pool");
 
   await fs.writeFile(path.resolve(__dirname, "../export/ABIs.json"), JSON.stringify(ABIs, null, 2));
 }

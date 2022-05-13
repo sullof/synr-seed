@@ -7,4 +7,5 @@ FOLDER=""
 if [[ "$2" != "" ]]; then
   FOLDER=$2/
 fi
-npx hardhat flatten contracts/$FOLDER$1.sol > ./flattened/$1-flatten.sol
+npx hardhat flatten contracts/$FOLDER$1.sol > ./flattened/$1-flattened.sol
+bin/clean-licenses-in-flattened.js $1

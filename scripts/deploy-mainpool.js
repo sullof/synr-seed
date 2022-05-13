@@ -14,6 +14,7 @@ let deployUtils;
 
 async function main() {
   deployUtils = new DeployUtils(ethers);
+  const {Tx} = deployUtils;
   const chainId = await deployUtils.currentChainId();
 
   const synrAddress = deployed[chainId].SyndicateERC20;
@@ -36,21 +37,11 @@ async function main() {
   const sSynr = await SyntheticSyndicateERC20.attach(sSynrAddress);
   await sSynr.updateRole(mainPool.address, await sSynr.ROLE_WHITE_LISTED_RECEIVER());
 
-  console.log("Init MainPool");
-  // define right parameters
-  await mainPool.initPool(7, 4000, {gasLimit: 50000});
+  await Tx(mainPool.initPool(16 * 7, 4000, {gasLimit: 70000}), "Init MainPool");
 
   await deployUtils.saveDeployed(chainId, ["MainPool"], [mainPool.address]);
 
-  console.log(
-    await deployUtils.verifyCodeInstructions(
-      "MainPool",
-      chainId,
-      ["address", "address", "address"],
-      [synrAddress, sSynrAddress, synrPassAddress],
-      "MainPool"
-    )
-  );
+  console.log(await deployUtils.verifyCodeInstructions("MainPool", chainId, "MainPool", "pool"));
 }
 
 main()

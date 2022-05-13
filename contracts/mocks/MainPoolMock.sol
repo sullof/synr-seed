@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity 0.8.11;
 
 import "../pool/MainPool.sol";
 
@@ -10,8 +10,8 @@ contract MainPoolMock is MainPool {
     address user,
     uint256 payload,
     uint16 recipientChain
-  ) external override {
-    _stake(user, payload, recipientChain);
+  ) external override returns (uint256) {
+    return _stake(user, payload, recipientChain);
   }
 
   function unstake(

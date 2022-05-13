@@ -52,6 +52,11 @@ module.exports = {
       gasLimit: 6000000,
       accounts: [envJson.testnet.privateKey],
     },
+    goerli: {
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      gasLimit: 6000000,
+      accounts: [envJson.testnet.privateKey],
+    },
     bsc_testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       chainId: 97,
@@ -60,7 +65,7 @@ module.exports = {
       accounts: [envJson.testnet.privateKey],
     },
     mumbai: {
-      url: "https://rpc-mumbai.matic.today",
+      url: "https://matic-mumbai.chainstacklabs.com",
       chainId: 80001,
       // gasPrice: 20000000000,
       gasLimit: 6000000,
@@ -72,6 +77,7 @@ module.exports = {
     coinmarketcap: process.env.COINMARKETCAP,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_KEY,
+    apiKey: process.env.BSCSCAN_KEY,
+    // process.env.ETHERSCAN_KEY,
   },
 };

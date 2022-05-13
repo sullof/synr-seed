@@ -1,5 +1,5 @@
 const {assert} = require("chai");
-
+const {hexZeroPad} = require("@ethersproject/bytes");
 const Helpers = {
   initEthers(ethers) {
     this.ethers = ethers;
@@ -34,15 +34,29 @@ const Helpers = {
   },
 
   bytes32Address(address) {
-    return "0x000000000000000000000000" + address.replace(/^0x/, "");
+    return hexZeroPad(address, 32);
+  },
+
+  mockEncodedVm(addr, payload) {
+    addr = addr.substring(2);
+    payload = hexZeroPad(this.ethers.BigNumber.from(payload).toHexString(), 32).substring(2);
+    let vaaBytes = [];
+    for (let k = 0; k < addr.length; k += 2) {
+      vaaBytes.push(parseInt(addr.substring(k, k + 2), 16));
+    }
+    for (let k = 0; k < payload.length; k += 2) {
+      vaaBytes.push(parseInt(payload.substring(k, k + 2), 16));
+    }
+    return new Int32Array(vaaBytes);
   },
 };
 
-Helpers.S_SYNR_SWAP = 0;
-Helpers.SYNR_STAKE = 1;
-Helpers.SYNR_PASS_STAKE_FOR_BOOST = 2;
-Helpers.SYNR_PASS_STAKE_FOR_SEEDS = 3;
-Helpers.BLUEPRINT_STAKE_FOR_BOOST = 4;
-Helpers.SEED_SWAP = 5;
+Helpers.S_SYNR_SWAP = 1;
+Helpers.SYNR_STAKE = 2;
+Helpers.SYNR_PASS_STAKE_FOR_BOOST = 3;
+Helpers.SYNR_PASS_STAKE_FOR_SEEDS = 4;
+Helpers.BLUEPRINT_STAKE_FOR_BOOST = 5;
+Helpers.BLUEPRINT_STAKE_FOR_SEEDS = 6;
+Helpers.SEED_SWAP = 7;
 
 module.exports = Helpers;

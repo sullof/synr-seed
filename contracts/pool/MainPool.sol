@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity 0.8.11;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 // (c) 2022+ SuperPower Labs Inc.
@@ -8,17 +8,18 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
 import "../token/TokenReceiver.sol";
-import "../utils/PayloadUtils.sol";
+import "../utils/PayloadUtilsUpgradeable.sol";
 import "../interfaces/IMainPool.sol";
-import "../token/SyndicateERC20.sol";
-import "../token/SyntheticSyndicateERC20.sol";
-import "../token/SynCityPasses.sol";
+import "../interfaces/ISyndicateERC20.sol";
+import "../interfaces/ISyntheticSyndicateERC20.sol";
+import "../interfaces/IERC721Minimal.sol";
 
 import "hardhat/console.sol";
 
-contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract MainPool is IMainPool, PayloadUtilsUpgradeable, TokenReceiver, Initializable, OwnableUpgradeable, UUPSUpgradeable {
   using AddressUpgradeable for address;
   using SafeMathUpgradeable for uint256;
 
@@ -26,18 +27,18 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
   mapping(address => User) public users;
   Conf public conf;
 
-  SyndicateERC20 public synr;
-  SyntheticSyndicateERC20 public sSynr;
-  SynCityPasses public pass;
+  ISyndicateERC20 public synr;
+  ISyntheticSyndicateERC20 public sSynr;
+  IERC721Minimal public pass;
 
   uint256 public penalties;
 
-  address public factory;
+  mapping(address => bool) public bridges;
 
   TVL public tvl;
 
-  modifier onlyFactory() {
-    require(factory != address(0) && _msgSender() == factory, "SeedPool: forbidden");
+  modifier onlyBridge() {
+    require(bridges[_msgSender()], "MainPool: forbidden");
     _;
   }
 
@@ -54,9 +55,9 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
     require(synr_.isContract(), "synr_ not a contract");
     require(sSynr_.isContract(), "sSynr_ not a contract");
     require(pass_.isContract(), "pass_ not a contract");
-    synr = SyndicateERC20(synr_);
-    sSynr = SyntheticSyndicateERC20(sSynr_);
-    pass = SynCityPasses(pass_);
+    synr = ISyndicateERC20(synr_);
+    sSynr = ISyntheticSyndicateERC20(sSynr_);
+    pass = IERC721Minimal(pass_);
   }
 
   function _updateTvl(
@@ -81,9 +82,15 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
-  function setFactory(address farmer_) external onlyOwner {
-    require(farmer_.isContract(), "SeedPool: farmer_ not a contract");
-    factory = farmer_;
+  function setBridge(address bridge_, bool active) external override onlyOwner {
+    require(bridge_.isContract(), "SeedPool: bridge_ not a contract");
+    if (active) {
+      bridges[bridge_] = true;
+      emit BridgeSet(bridge_);
+    } else {
+      delete bridges[bridge_];
+      emit BridgeRemoved(bridge_);
+    }
   }
 
   function initPool(uint16 minimumLockupTime_, uint16 earlyUnstakePenalty_) external override onlyOwner {
@@ -95,6 +102,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
       earlyUnstakePenalty: earlyUnstakePenalty_,
       status: 1
     });
+    emit PoolInitiated(minimumLockupTime_, earlyUnstakePenalty_);
   }
 
   function version() external pure virtual override returns (uint256) {
@@ -103,6 +111,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
 
   function pausePool(bool paused) external onlyOwner {
     conf.status = paused ? 2 : 1;
+    emit PoolPaused(paused);
   }
 
   /**
@@ -150,7 +159,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
       lockedFrom: uint32(lockedFrom),
       lockedUntil: uint32(lockedUntil),
       tokenAmountOrID: uint96(tokenAmountOrID),
-      unstakedAt: 0,
+      unlockedAt: 0,
       otherChain: otherChain,
       mainIndex: uint16(mainIndex)
     });
@@ -192,6 +201,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
     uint256 tokenAmountOrID,
     uint16 otherChain
   ) internal returns (uint256) {
+    require(tokenType < BLUEPRINT_STAKE_FOR_BOOST, "MainPool: invalid tokenType");
     validateInput(tokenType, lockupTime, tokenAmountOrID);
     if (tokenType == S_SYNR_SWAP || tokenType == SYNR_STAKE) {
       require(tokenAmountOrID >= 1e18, "MainPool: must stake at least one unity");
@@ -211,7 +221,6 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
       // MainPool must be approved to spend the SYNR
       synr.safeTransferFrom(user, address(this), tokenAmountOrID, "");
     } else {
-      // tokenType 2 and 3
       // SYNR Pass
       // MainPool must be approved to make the transfer
       pass.safeTransferFrom(user, address(this), tokenAmountOrID);
@@ -286,7 +295,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
         uint256(deposit.tokenAmountOrID) == tokenAmountOrID,
       "MainPool: inconsistent deposit"
     );
-    require(deposit.unstakedAt == 0, "MainPool: deposit already unstaked");
+    require(deposit.unlockedAt == 0, "MainPool: deposit already unstaked");
     if (tokenType == SYNR_PASS_STAKE_FOR_BOOST || tokenType == SYNR_PASS_STAKE_FOR_SEEDS) {
       pass.safeTransferFrom(address(this), user, uint256(tokenAmountOrID));
     } else {
@@ -297,7 +306,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
         penalties += penalty;
       }
     }
-    deposit.unstakedAt = uint32(block.timestamp);
+    deposit.unlockedAt = uint32(block.timestamp);
     emit DepositUnlocked(user, uint16(mainIndex));
   }
 
@@ -363,6 +372,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
    */
   function withdrawPenalties(uint256 amount, address beneficiary) external override onlyOwner {
     require(penalties > 0 && amount <= penalties, "MainPool: amount not available");
+    require(beneficiary != address(0), "MainPool: beneficiary cannot be zero address");
     if (amount == 0) {
       amount = penalties;
     }
@@ -380,20 +390,21 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
     address user,
     uint256 payload,
     uint16 recipientChain
-  ) internal {
+  ) internal returns (uint256) {
     require(conf.status == 1, "MainPool: not initiated or paused");
     (uint256 tokenType, uint256 lockupTime, uint256 tokenAmountOrID) = deserializeInput(payload);
     require(conf.minimumLockupTime > 0, "MainPool: pool not alive");
     payload = _makeDeposit(user, tokenType, lockupTime, tokenAmountOrID, recipientChain);
     emit DepositSaved(user, uint16(getIndexFromPayload(payload)));
+    return payload;
   }
 
   function stake(
     address user,
     uint256 payload,
     uint16 recipientChain
-  ) external virtual onlyFactory {
-    _stake(user, payload, recipientChain);
+  ) external virtual onlyBridge returns (uint256) {
+    return _stake(user, payload, recipientChain);
   }
 
   function unstake(
@@ -403,7 +414,7 @@ contract MainPool is IMainPool, PayloadUtils, TokenReceiver, Initializable, Owna
     uint256 lockedUntil,
     uint256 mainIndex,
     uint256 tokenAmountOrID
-  ) external virtual onlyFactory {
+  ) external virtual onlyBridge {
     _unstake(user, tokenType, lockedFrom, lockedUntil, mainIndex, tokenAmountOrID);
   }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.11;
 
 // Author: Francesco Sullo <francesco@superpower.io>
 // Superpower Labs / Syn City
@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 // It differs from SynCityCoupons because there are no batch mint and transfer
 // they were necessary only for listing on Binance marketplace
-contract SynCityCouponsSimplified is ERC721, ERC721Enumerable, Ownable {
+contract SynCityCoupons is ERC721, ERC721Enumerable, Ownable {
   using Address for address;
   uint256 public nextTokenId = 1;
 

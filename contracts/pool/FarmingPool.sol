@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity 0.8.11;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 // (c) 2022+ SuperPower Labs Inc.
@@ -27,7 +27,7 @@ contract FarmingPool is SidePool {
   /**
    * @notice calls _stake function
    * @param tokenType is the type of token
-   * @param lockupTime time which the stake will be lock
+   * @param lockupTime time in days. For how many days the stake will be locked
    * @param tokenAmountOrID amount to be staked
    */
   function stake(
@@ -53,7 +53,7 @@ contract FarmingPool is SidePool {
    */
   function unstake(uint256 depositIndex) external override {
     Deposit memory deposit = users[_msgSender()].deposits[depositIndex];
-    require(deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST, "FarmingPool: only bluprints can be unstaked");
+    require(deposit.tokenType == BLUEPRINT_STAKE_FOR_BOOST, "FarmingPool: only blueprints can be unstaked");
     _unstakeDeposit(deposit);
   }
 
