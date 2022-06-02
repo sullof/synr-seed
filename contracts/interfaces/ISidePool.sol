@@ -23,14 +23,7 @@ interface ISidePool is ISideUser {
   );
 
   event PriceRatioUpdated(uint32 priceRatio);
-  event NftConfUpdated(
-    uint32 sPSynrEquivalent,
-    uint32 sPBoostFactor,
-    uint32 sPBoostLimit,
-    uint32 bPSynrEquivalent,
-    uint32 bPBoostFactor,
-    uint32 bPBoostLimit
-  );
+  event NftConfUpdated(uint32 sPSynrEquivalent, uint32 sPBoostFactor, uint32 bPSynrEquivalent, uint32 bPBoostFactor);
   event PoolPaused(bool isPaused);
   event BridgeSet(address bridge);
   event BridgeRemoved(address bridge);
@@ -71,10 +64,8 @@ interface ISidePool is ISideUser {
   struct NftConf {
     uint32 sPSynrEquivalent; // 100,000
     uint32 sPBoostFactor; // 12500 > 112.5% > +12.5% of boost
-    uint32 sPBoostLimit;
     uint32 bPSynrEquivalent;
     uint32 bPBoostFactor;
-    uint32 bPBoostLimit;
   }
 
   struct ExtraNftConf {
@@ -118,10 +109,8 @@ interface ISidePool is ISideUser {
   function updateNftConf(
     uint32 sPSynrEquivalent,
     uint32 sPBoostFactor,
-    uint32 sPBoostLimit,
     uint32 bPSynrEquivalent,
-    uint32 bPBoostFactor,
-    uint32 bPBoostLimit
+    uint32 bPBoostFactor
   ) external;
 
   function getLockupTime(Deposit memory deposit) external view returns (uint256);

@@ -173,10 +173,8 @@ abstract contract SidePool is
   function updateNftConf(
     uint32 sPSynrEquivalent_,
     uint32 sPBoostFactor_,
-    uint32 sPBoostLimit_,
     uint32 bPSynrEquivalent_,
-    uint32 bPBoostFactor_,
-    uint32 bPBoostLimit_
+    uint32 bPBoostFactor_
   ) external override onlyOwner {
     require(conf.status == 1, "SidePool: not active");
     if (sPSynrEquivalent_ > 0) {
@@ -185,19 +183,13 @@ abstract contract SidePool is
     if (sPBoostFactor_ > 0) {
       nftConf.sPBoostFactor = sPBoostFactor_;
     }
-    if (sPBoostLimit_ > 0) {
-      nftConf.sPBoostLimit = sPBoostLimit_;
-    }
     if (bPSynrEquivalent_ > 0) {
       nftConf.bPSynrEquivalent = bPSynrEquivalent_;
     }
     if (bPBoostFactor_ > 0) {
       nftConf.bPBoostFactor = bPBoostFactor_;
     }
-    if (bPBoostLimit_ > 0) {
-      nftConf.bPBoostLimit = bPBoostLimit_;
-    }
-    emit NftConfUpdated(sPSynrEquivalent_, sPBoostFactor_, sPBoostLimit_, bPSynrEquivalent_, bPBoostFactor_, bPBoostLimit_);
+    emit NftConfUpdated(sPSynrEquivalent_, sPBoostFactor_, bPSynrEquivalent_, bPBoostFactor_);
   }
 
   function pausePool(bool paused) external onlyOwner {
@@ -316,13 +308,11 @@ abstract contract SidePool is
     uint256 passAmount = passForBoostAmount(user_);
     uint256 blueprintAmount = blueprintForBoostAmount(user_);
     if (passAmount > 0) {
-      // if a SYNR Pass can boost 15000 SYNR (i.e., nftConf.sPBoostLimit)
-      // there is a potential limit that depends on how many pass you staked
       (baseAmount, boostedAmount) = _calculateBoost(
         boostedAmount,
         baseAmount,
         passAmount,
-        nftConf.sPBoostLimit,
+        nftConf.sPSynrEquivalent * 2,
         nftConf.sPBoostFactor
       );
       baseAmount = uint256(user.stakedAmount).sub(baseAmount);
@@ -332,7 +322,7 @@ abstract contract SidePool is
         boostedAmount,
         baseAmount,
         blueprintAmount,
-        nftConf.bPBoostLimit,
+        nftConf.bPSynrEquivalent * 2,
         nftConf.bPBoostFactor
       );
     }
