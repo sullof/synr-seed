@@ -770,6 +770,7 @@ describe("#Integration test", function () {
 
     let deposit = await mainPool.getDepositByIndex(fundOwner.address, 0);
     const finalPayload = await fromDepositToTransferPayload(deposit);
+
     await sideTesseract.connect(fundOwner).completeCrossChainTransfer(1, mockEncodedVm(fundOwner.address, finalPayload));
 
     await increaseBlockTimestampBy(366 * 24 * 3600);
@@ -780,6 +781,13 @@ describe("#Integration test", function () {
 
     await increaseBlockTimestampBy(366 * 24 * 3600);
     const rewards3YR = await seedPool.calculateUntaxedRewards(fundOwner.address, 0, await getTimestamp());
+
+    // console.log(rewards1YR)
+    // console.log(rewards2YR)
+    // console.log(rewards3YR)
+
+    deposit = await seedPool.getDepositByIndex(fundOwner.address, 0);
+    //console.log(deposit)
 
     expect(rewards2YR.div(rewards1YR)).equal(2);
     expect(rewards3YR.div(rewards1YR)).equal(3);

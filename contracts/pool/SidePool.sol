@@ -267,6 +267,8 @@ abstract contract SidePool is
       return 0;
     }
     uint256 when = timestamp;
+    //uint256 when = lockedUntil > timestamp ? timestamp : lockedUntil;
+
     return
       uint256(deposit.tokenAmount)
         .mul(deposit.rewardsFactor)
