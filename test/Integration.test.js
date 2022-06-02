@@ -750,4 +750,41 @@ describe("#Integration test", function () {
       await sideTesseract.connect(fundOwner).completeCrossChainTransfer(1, mockEncodedVm(fundOwner.address, finalPayload));
     }
   });
+  it.only("should increase rewards after lock period", async function () {
+    // stake SYNR in the Tesseract
+    const amount = ethers.utils.parseEther("10000");
+
+    const payload = await serializeInput(
+      SYNR_STAKE,
+      365, // 1 year
+      amount
+    );
+
+    await synr.connect(fundOwner).approve(mainPool.address, amount);
+    await mainTesseract.connect(fundOwner).crossChainTransfer(
+      1,
+      payload,
+      4, // BSC
+      1
+    );
+
+    let deposit = await mainPool.getDepositByIndex(fundOwner.address, 0);
+    const finalPayload = await fromDepositToTransferPayload(deposit);
+    await sideTesseract.connect(fundOwner).completeCrossChainTransfer(1, mockEncodedVm(fundOwner.address, finalPayload));
+
+    await increaseBlockTimestampBy(366 * 24 * 3600);
+    const rewards1YR = await seedPool.calculateUntaxedRewards(fundOwner.address, 0, await getTimestamp());
+
+    await increaseBlockTimestampBy(366 * 24 * 3600);
+    const rewards2YR = await seedPool.calculateUntaxedRewards(fundOwner.address, 0, await getTimestamp());
+
+    await increaseBlockTimestampBy(366 * 24 * 3600);
+    const rewards3YR = await seedPool.calculateUntaxedRewards(fundOwner.address, 0, await getTimestamp());
+
+    expect(rewards2YR.div(rewards1YR)).equal(2);
+    expect(rewards3YR.div(rewards1YR)).equal(3);
+
+    expect(rewards2YR.div(200000000)).equal(rewards1YR.div(100000000));
+    expect(rewards3YR.div(300000000)).equal(rewards1YR.div(100000000));
+  });
 });
