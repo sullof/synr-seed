@@ -23,7 +23,7 @@ interface ISidePool is ISideUser {
   );
 
   event PriceRatioUpdated(uint32 priceRatio);
-  event NftConfUpdated(uint32 sPSynrEquivalent, uint32 sPBoostFactor, uint32 bPSynrEquivalent, uint32 bPBoostFactor);
+  event NftConfUpdated(uint32 sPSynrEquivalent, uint32 boostFactor, uint32 bPSynrEquivalent);
   event PoolPaused(bool isPaused);
   event BridgeSet(address bridge);
   event BridgeRemoved(address bridge);
@@ -63,9 +63,8 @@ interface ISidePool is ISideUser {
 
   struct NftConf {
     uint32 sPSynrEquivalent; // 100,000
-    uint32 sPBoostFactor; // 12500 > 112.5% > +12.5% of boost
     uint32 bPSynrEquivalent;
-    uint32 bPBoostFactor;
+    uint32 boostFactor; // 12500 > 112.5% > +12.5% of boost
   }
 
   struct ExtraNftConf {
@@ -108,9 +107,8 @@ interface ISidePool is ISideUser {
   // Variable value0 is 1 slot(s) too deep inside the stack.
   function updateNftConf(
     uint32 sPSynrEquivalent,
-    uint32 sPBoostFactor,
-    uint32 bPSynrEquivalent,
-    uint32 bPBoostFactor
+    uint32 boostFactor,
+    uint32 bPSynrEquivalent
   ) external;
 
   function getLockupTime(Deposit memory deposit) external view returns (uint256);
@@ -129,9 +127,11 @@ interface ISidePool is ISideUser {
 
   function calculateTaxOnRewards(uint256 rewards) external view returns (uint256);
 
-  function passForBoostAmount(address user) external view returns (uint256);
-
-  function blueprintForBoostAmount(address user) external view returns (uint256);
+  function nftForBoostAmount(
+    address user,
+    bool isPass,
+    uint8 tokenType
+  ) external view returns (uint256);
 
   function boostWeight(address user) external view returns (uint256);
 

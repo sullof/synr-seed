@@ -172,24 +172,20 @@ abstract contract SidePool is
   // put to zero any parameter that remains the same
   function updateNftConf(
     uint32 sPSynrEquivalent_,
-    uint32 sPBoostFactor_,
-    uint32 bPSynrEquivalent_,
-    uint32 bPBoostFactor_
+    uint32 boostFactor_,
+    uint32 bPSynrEquivalent_
   ) external override onlyOwner {
     require(conf.status == 1, "SidePool: not active");
     if (sPSynrEquivalent_ > 0) {
       nftConf.sPSynrEquivalent = sPSynrEquivalent_;
     }
-    if (sPBoostFactor_ > 0) {
-      nftConf.sPBoostFactor = sPBoostFactor_;
+    if (boostFactor_ > 0) {
+      nftConf.boostFactor = boostFactor_;
     }
     if (bPSynrEquivalent_ > 0) {
       nftConf.bPSynrEquivalent = bPSynrEquivalent_;
     }
-    if (bPBoostFactor_ > 0) {
-      nftConf.bPBoostFactor = bPBoostFactor_;
-    }
-    emit NftConfUpdated(sPSynrEquivalent_, sPBoostFactor_, bPSynrEquivalent_, bPBoostFactor_);
+    emit NftConfUpdated(sPSynrEquivalent_, boostFactor_, bPSynrEquivalent_);
   }
 
   function pausePool(bool paused) external onlyOwner {
@@ -273,24 +269,20 @@ abstract contract SidePool is
     return rewards.mul(conf.taxPoints).div(10000);
   }
 
-  function passForBoostAmount(address user) public view override returns (uint256) {
-    uint256 passAmount;
-    for (uint256 i = 0; i < users[user].deposits.length; i++) {
-      if (users[user].deposits[i].tokenType == SYNR_PASS_STAKE_FOR_BOOST && users[user].deposits[i].unlockedAt == 0) {
-        passAmount++;
+  function nftForBoostAmount(
+    address user,
+    bool isPass,
+    uint8 tokenType
+  ) public view override returns (uint256) {
+    uint256 nftAmount;
+    if ((isPass && users[user].passAmount != 0) || (!isPass && users[user].blueprintAmount != 0)) {
+      for (uint256 i = 0; i < users[user].deposits.length; i++) {
+        if (users[user].deposits[i].tokenType == tokenType && users[user].deposits[i].unlockedAt == 0) {
+          nftAmount++;
+        }
       }
     }
-    return passAmount;
-  }
-
-  function blueprintForBoostAmount(address user) public view override returns (uint256) {
-    uint256 blueprintAmount;
-    for (uint256 i = 0; i < users[user].deposits.length; i++) {
-      if (users[user].deposits[i].tokenType == BLUEPRINT_STAKE_FOR_BOOST && users[user].deposits[i].unlockedAt == 0) {
-        blueprintAmount++;
-      }
-    }
-    return blueprintAmount;
+    return nftAmount;
   }
 
   /**
@@ -300,48 +292,23 @@ abstract contract SidePool is
   function boostWeight(address user_) public view override returns (uint256) {
     User storage user = users[user_];
     uint256 boost = 1e9;
-    if ((user.passAmount == 0 && user.blueprintAmount == 0) || user.tokenAmount == 0) {
+    if (user.tokenAmount == 0) {
       return boost;
     }
     uint256 baseAmount = uint256(user.stakedAmount);
-    uint256 boostedAmount = baseAmount;
-    uint256 passAmount = passForBoostAmount(user_);
-    uint256 blueprintAmount = blueprintForBoostAmount(user_);
-    if (passAmount > 0) {
-      (baseAmount, boostedAmount) = _calculateBoost(
-        boostedAmount,
-        baseAmount,
-        passAmount,
-        nftConf.sPSynrEquivalent * 2,
-        nftConf.sPBoostFactor
-      );
-      baseAmount = uint256(user.stakedAmount).sub(baseAmount);
+    uint256 passAmount = nftForBoostAmount(user_, true, SYNR_PASS_STAKE_FOR_BOOST);
+    uint256 blueprintAmount = nftForBoostAmount(user_, false, BLUEPRINT_STAKE_FOR_BOOST);
+    if (passAmount + blueprintAmount == 0) {
+      return boost;
     }
-    if (blueprintAmount > 0) {
-      (baseAmount, boostedAmount) = _calculateBoost(
-        boostedAmount,
-        baseAmount,
-        blueprintAmount,
-        nftConf.bPSynrEquivalent * 2,
-        nftConf.bPBoostFactor
-      );
+    uint256 limit = uint256(passAmount)
+      .mul(nftConf.sPSynrEquivalent * 2)
+      .add(uint256(blueprintAmount).mul(nftConf.bPSynrEquivalent * 2))
+      .mul(1e18);
+    if (limit < baseAmount) {
+      baseAmount = limit;
     }
-    return boost.mul(boostedAmount).div(user.stakedAmount);
-  }
-
-  function _calculateBoost(
-    uint256 boosted,
-    uint256 amount,
-    uint256 nftAmount,
-    uint256 limit,
-    uint256 factor
-  ) internal view returns (uint256, uint256) {
-    limit = uint256(nftAmount).mul(limit).mul(1e18);
-    if (limit < amount) {
-      amount = limit;
-    }
-
-    return (amount, boosted.add(amount.mul(factor).div(10000)));
+    return boost.mul(baseAmount.add(baseAmount.mul(nftConf.boostFactor).div(10000))).div(user.stakedAmount);
   }
 
   function collectRewards() public override {
