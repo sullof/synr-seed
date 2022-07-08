@@ -37,17 +37,17 @@ async function main() {
 
     const sSynr = await deployUtils.attach("SyntheticSyndicateERC20");
     for (let address of testnetWallets) {
-      await deployUtils.Tx(sSynr.mint(address, ethers.utils.parseEther("200000")), "sSYNR to " + address);
+      await deployUtils.Tx(sSynr.mint(address, ethers.utils.parseEther("100000")), "sSYNR to " + address);
     }
 
     const synr = await deployUtils.attach("SyndicateERC20");
     for (let address of testnetWallets) {
-      await deployUtils.Tx(synr.mint(address, ethers.utils.parseEther("200000")), "SYNR to " + address);
+      await deployUtils.Tx(synr.mint(address, ethers.utils.parseEther("100000")), "SYNR to " + address);
     }
   } else {
     let blueprint = await deployUtils.attach("SynCityCoupons");
     for (let address of testnetWallets) {
-      await deployUtils.Tx(blueprint.mint(address, 8), "Passes to " + address);
+      await deployUtils.Tx(blueprint.mint(address, 10), "Blueprints to " + address);
     }
   }
 }

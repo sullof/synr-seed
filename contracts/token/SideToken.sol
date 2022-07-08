@@ -26,7 +26,7 @@ contract SideToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, ERC20
     allowancePaused = true;
   }
 
-  function mint(address to, uint256 amount) public onlyMinter {
+  function mint(address to, uint256 amount) public virtual onlyMinter {
     _mint(to, amount);
   }
 

@@ -95,7 +95,7 @@ contract WormholeBridge is PayloadUtils, WormholeTunnelUpgradeable {
       keccak256(
         abi.encodePacked(
           "\x19\x01", // EIP-191
-          getChainId(),
+          block.chainid,
           to,
           tokenType,
           lockedFrom,
@@ -104,13 +104,5 @@ contract WormholeBridge is PayloadUtils, WormholeTunnelUpgradeable {
           tokenAmountOrID
         )
       );
-  }
-
-  function getChainId() public view returns (uint256) {
-    uint256 id;
-    assembly {
-      id := chainid()
-    }
-    return id;
   }
 }
