@@ -26,7 +26,7 @@ contract TesseractV2Mock is Tesseract {
     uint256 payload,
     uint16 recipientChain,
     uint32 nonce
-  ) external payable override returns (uint64 sequence) {
+  ) external override returns (uint64 sequence) {
     if (bridgeType == 1) {
       return
         IWormholeBridge(bridges[1]).wormholeTransfer(payload, recipientChain, bytes32(uint256(uint160(_msgSender()))), nonce);

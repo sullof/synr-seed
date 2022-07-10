@@ -52,7 +52,7 @@ contract Tesseract is ITesseract, Initializable, PayloadUtilsUpgradeable, Ownabl
     uint256 payload,
     uint16 recipientChain,
     uint32 nonce
-  ) external payable virtual override returns (uint64 sequence) {
+  ) external virtual override returns (uint64 sequence) {
     if (bridgeType == 1) {
       return
         IWormholeBridge(bridges[1]).wormholeTransfer(payload, recipientChain, bytes32(uint256(uint160(_msgSender()))), nonce);

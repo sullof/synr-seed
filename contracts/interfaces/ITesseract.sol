@@ -16,7 +16,7 @@ interface ITesseract {
     uint256 payload,
     uint16 recipientChain,
     uint32 nonce
-  ) external payable returns (uint64 sequence);
+  ) external returns (uint64 sequence);
 
   function completeCrossChainTransfer(uint16 bridgeType, bytes memory encodedVm) external;
 }
