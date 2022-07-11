@@ -26,8 +26,6 @@ contract PayloadUtils is IPayloadUtils, Constants {
     require(tokenType < BLUEPRINT_STAKE_FOR_SEEDS + 1, "PayloadUtils: invalid token type");
     if (tokenType == SYNR_PASS_STAKE_FOR_BOOST || tokenType == SYNR_PASS_STAKE_FOR_SEEDS) {
       require(tokenAmountOrID < 889, "PayloadUtils: Not a Mobland SYNR Pass token ID");
-    } else if (tokenType == BLUEPRINT_STAKE_FOR_BOOST || tokenType == BLUEPRINT_STAKE_FOR_SEEDS) {
-      require(tokenAmountOrID < 8001, "PayloadUtils: Not a Blueprint token ID");
     } else {
       require(tokenAmountOrID < 1e28, "PayloadUtils: tokenAmountOrID out of range");
     }
